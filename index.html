@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="在庫管理">
+<title>在庫管理アプリ</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; }
+.app { max-width: 480px; margin: 0 auto; padding-bottom: 90px; }
+
+.header { background: #fff; border-bottom: 1px solid #e8e8e4; padding: 14px 16px 10px; position: sticky; top: 0; z-index: 20; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header-sub { font-size: 12px; color: #888; margin-top: 2px; }
+
+.tab-bar { display: flex; background: #fff; border-bottom: 1px solid #e8e8e4; position: sticky; top: 57px; z-index: 19; }
+.tab { flex: 1; padding: 11px 4px; font-size: 13px; font-weight: 500; text-align: center; cursor: pointer; color: #888; border-bottom: 2.5px solid transparent; user-select: none; }
+.tab.active { color: #1a6abf; border-bottom-color: #1a6abf; }
+
+.section-label { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.6px; padding: 12px 16px 6px; }
+
+/* Item card */
+.item-card { background: #fff; border-radius: 12px; margin: 0 16px 10px; padding: 14px; border-left: 4px solid #4caf7d; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.item-card.needs-refill { border-left-color: #e05252; }
+
+/* Card header row: name + edit button */
+.card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.item-name { font-size: 14px; font-weight: 600; color: #1a1a1a; line-height: 1.4; flex: 1; }
+.edit-btn { flex-shrink: 0; padding: 4px 10px; border: 1.5px solid #ddd; border-radius: 20px; background: #fff; font-size: 12px; font-weight: 600; color: #888; cursor: pointer; white-space: nowrap; }
+.edit-btn:active { background: #f0f0f0; }
+
+.status-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+.badge-danger { background: #fdeaea; color: #c0392b; }
+.badge-success { background: #eafaf1; color: #27ae60; }
+.total-label { font-size: 12px; color: #999; }
+
+.store-rows { border-top: 1px solid #f0f0ee; padding-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+.store-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.store-name-label { font-size: 13px; font-weight: 600; min-width: 90px; }
+.store-name-label.kagurazaka { color: #1a4d8f; }
+.store-name-label.otoko { color: #6c3483; }
+.qty-wrap { display: flex; align-items: center; gap: 8px; }
+.qty-btn { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid #ddd; background: #f8f8f6; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #444; user-select: none; flex-shrink: 0; }
+.qty-btn:active { background: #ececec; transform: scale(0.93); }
+.qty-val { font-size: 20px; font-weight: 700; min-width: 32px; text-align: center; color: #1a1a1a; }
+.qty-unit { font-size: 12px; color: #999; }
+.na-label { font-size: 12px; color: #ccc; padding: 0 8px; }
+
+.min-note { margin-top: 10px; padding-top: 8px; border-top: 1px solid #f0f0ee; font-size: 12px; color: #aaa; display: flex; justify-content: space-between; }
+.min-note span { color: #555; font-weight: 600; }
+
+/* Refill */
+.refill-card { background: #fff; border-radius: 12px; margin: 0 16px 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.refill-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; line-height: 1.4; }
+.refill-sub { font-size: 12px; color: #999; }
+.refill-right { text-align: right; flex-shrink: 0; }
+.refill-count { font-size: 20px; font-weight: 700; color: #e05252; }
+.refill-count-unit { font-size: 11px; color: #aaa; }
+
+/* Apt */
+.apt-card { background: #fff; border-radius: 12px; margin: 0 16px 10px; padding: 14px; border-left: 4px solid #4caf7d; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.apt-card.needs-order { border-left-color: #e05252; }
+.apt-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px; }
+.apt-header-left { flex: 1; min-width: 0; }
+.apt-header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.apt-name { font-size: 14px; font-weight: 600; line-height: 1.4; }
+.apt-supplier { font-size: 12px; color: #999; margin-top: 2px; }
+.apt-stock-row { display: flex; align-items: center; justify-content: space-between; }
+.apt-stock-info { flex: 1; }
+.apt-min-label { font-size: 12px; color: #aaa; margin-top: 3px; }
+.apt-min-label strong { color: #555; font-weight: 600; }
+.apt-order-label { font-size: 12px; color: #999; margin-top: 4px; }
+.apt-order-label span { color: #444; font-weight: 600; }
+
+/* Bottom bar */
+.save-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 16px; background: #fff; border-top: 1px solid #e8e8e4; z-index: 20; }
+.save-btn { width: 100%; max-width: 448px; display: block; margin: 0 auto; padding: 15px; border: none; border-radius: 14px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.save-btn-store { background: #1a6abf; color: #fff; }
+.save-btn-store:active { background: #1558a0; }
+.save-btn-apt { background: #6c3483; color: #fff; }
+.save-btn-apt:active { background: #5b2c70; }
+
+.toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #2d2d2d; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; z-index: 200; opacity: 0; transition: opacity 0.25s; pointer-events: none; white-space: nowrap; }
+.toast.show { opacity: 1; }
+.empty { text-align: center; padding: 48px 20px; color: #aaa; font-size: 14px; }
+.empty-icon { font-size: 40px; margin-bottom: 10px; }
+.last-updated { text-align: center; font-size: 11px; color: #bbb; padding: 8px 0 4px; }
+
+/* Add button */
+.add-btn-wrap { padding: 4px 16px 16px; }
+.add-btn { width: 100%; padding: 13px; border: 2px dashed #b0c8e8; border-radius: 12px; background: #f0f6ff; color: #1a6abf; font-size: 14px; font-weight: 600; cursor: pointer; }
+.add-btn:active { background: #ddeeff; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: flex-end; justify-content: center; overflow-y: auto; }
+.modal-overlay.open { display: flex; }
+.modal { background: #fff; border-radius: 20px 20px 0 0; padding: 20px 20px 40px; width: 100%; max-width: 480px; max-height: 92vh; overflow-y: auto; }
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+.form-row { margin-bottom: 14px; }
+.form-label { font-size: 12px; font-weight: 600; color: #777; margin-bottom: 5px; }
+.form-input { width: 100%; padding: 11px 12px; border: 1.5px solid #ddd; border-radius: 10px; font-size: 15px; color: #1a1a1a; background: #fff; }
+.form-input:focus { outline: none; border-color: #1a6abf; }
+.store-checks { display: flex; gap: 10px; }
+.store-check { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; border: 1.5px solid #ddd; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: #888; }
+.store-check.checked { border-color: #1a6abf; background: #e8f0fb; color: #1a4d8f; }
+.modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+.modal-cancel { flex: 1; padding: 13px; border: 1.5px solid #ddd; border-radius: 12px; background: #fff; font-size: 14px; font-weight: 600; color: #888; cursor: pointer; }
+.modal-submit { flex: 2; padding: 13px; border: none; border-radius: 12px; background: #1a6abf; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+.modal-submit:active { background: #1558a0; }
+/* Delete button in modal */
+.modal-delete { width: 100%; margin-top: 10px; padding: 13px; border: 1.5px solid #f0b0b0; border-radius: 12px; background: #fff; font-size: 14px; font-weight: 600; color: #c0392b; cursor: pointer; }
+.modal-delete:active { background: #fdeaea; }
+.modal-divider { border: none; border-top: 1px solid #f0f0ee; margin: 14px 0 4px; }
+
+/* Order list cards */
+.order-card { background: #fff; border-radius: 12px; margin: 0 16px 10px; padding: 14px; border-left: 4px solid #e05252; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.order-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+.order-info { flex: 1; min-width: 0; }
+.order-name { font-size: 14px; font-weight: 600; color: #1a1a1a; line-height: 1.4; margin-bottom: 3px; }
+.order-supplier { font-size: 12px; color: #999; }
+.order-detail-row { display: flex; gap: 0; border-top: 1px solid #f0f0ee; padding-top: 12px; }
+.order-detail-item { flex: 1; text-align: center; }
+.order-detail-item + .order-detail-item { border-left: 1px solid #f0f0ee; }
+.order-detail-label { font-size: 11px; color: #aaa; margin-bottom: 4px; }
+.order-detail-val { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+.order-detail-val.red { color: #e05252; }
+.order-detail-val.blue { color: #1a6abf; }
+.order-detail-unit { font-size: 11px; font-weight: 400; color: #999; }
+.order-section-label { font-size: 12px; font-weight: 700; color: #666; padding: 10px 16px 4px; }
+.order-shop-row { margin-top: 12px; padding-top: 10px; border-top: 1px solid #f0f0ee; }
+.shop-btn { display: block; width: 100%; padding: 11px; background: #1a6abf; color: #fff; border-radius: 10px; font-size: 14px; font-weight: 600; text-align: center; text-decoration: none; }
+.shop-btn:active { background: #1558a0; }
+.shop-btn-disabled { display: block; width: 100%; padding: 11px; background: #f5f5f0; color: #bbb; border-radius: 10px; font-size: 13px; text-align: center; border: 1px dashed #ddd; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>在庫管理</h1>
+    <div class="header-sub" id="header-date"></div>
+  </div>
+  <div class="tab-bar">
+    <div class="tab active" onclick="showTab('store')" id="tab-store">🏪 店舗</div>
+    <div class="tab" onclick="showTab('refill')" id="tab-refill">📦 補充</div>
+    <div class="tab" onclick="showTab('apt')" id="tab-apt">🏠 アパート</div>
+    <div class="tab" onclick="showTab('order')" id="tab-order">🛒 発注</div>
+  </div>
+
+  <div id="view-store">
+    <div class="section-label">全店舗の在庫（合計が最低在庫を下回ると補充が必要になります）</div>
+    <div id="store-items"></div>
+    <div class="add-btn-wrap">
+      <button class="add-btn" onclick="openModal({mode:'store'})">＋ 新規品目を追加する</button>
+    </div>
+    <div class="last-updated" id="last-updated-store"></div>
+  </div>
+
+  <div id="view-refill" style="display:none">
+    <div class="section-label">補充が必要な商品</div>
+    <div id="refill-items"></div>
+  </div>
+
+  <div id="view-apt" style="display:none">
+    <div class="section-label">アパート在庫</div>
+    <div id="apt-items"></div>
+    <div class="add-btn-wrap">
+      <button class="add-btn" onclick="openModal({mode:'apt'})">＋ 新規品目を追加する</button>
+    </div>
+    <div class="last-updated" id="last-updated-apt"></div>
+  </div>
+
+  <div id="view-order" style="display:none">
+    <div class="section-label">発注が必要な商品（在庫が最低在庫以下）</div>
+    <div id="order-items"></div>
+  </div>
+</div>
+
+<!-- 共通モーダル（追加・編集兼用） -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">新規品目を追加</div>
+
+    <div class="form-row">
+      <div class="form-label">商品名 *</div>
+      <input class="form-input" id="f-name" type="text" placeholder="例: コーラ（缶）">
+    </div>
+    <div class="form-row">
+      <div class="form-label">単位 *</div>
+      <input class="form-input" id="f-unit" type="text" placeholder="例: 本、袋、箱、ケース">
+    </div>
+    <div class="form-row">
+      <div class="form-label">最低在庫数 *</div>
+      <input class="form-input" id="f-min" type="number" min="0" placeholder="0">
+    </div>
+
+    <!-- 店舗タブ：対象店舗 -->
+    <div class="form-row" id="f-stores-row">
+      <div class="form-label">対象店舗（複数選択可）*</div>
+      <div class="store-checks">
+        <div class="store-check checked" id="chk-神楽坂" onclick="toggleStore('神楽坂')">神楽坂</div>
+        <div class="store-check checked" id="chk-男マエ食道" onclick="toggleStore('男マエ食道')">男マエ食道</div>
+      </div>
+    </div>
+    <!-- 店舗タブ：発注先情報 -->
+    <div id="f-store-order-fields">
+      <div class="form-row">
+        <div class="form-label">発注先</div>
+        <input class="form-input" id="f-store-supplier" type="text" placeholder="例: アマゾン">
+      </div>
+      <div class="form-row">
+        <div class="form-label">発注先URL（ショップページ）</div>
+        <input class="form-input" id="f-store-url" type="url" placeholder="https://...">
+      </div>
+      <div class="form-row">
+        <div class="form-label">発注数</div>
+        <input class="form-input" id="f-store-order" type="number" min="0" placeholder="0">
+      </div>
+    </div>
+
+    <!-- アパートタブ：仕入先・発注数・URL -->
+    <div id="f-apt-fields" style="display:none">
+      <div class="form-row">
+        <div class="form-label">仕入先</div>
+        <input class="form-input" id="f-supplier" type="text" placeholder="例: アマゾン">
+      </div>
+      <div class="form-row">
+        <div class="form-label">仕入先URL（ショップページ）</div>
+        <input class="form-input" id="f-url" type="url" placeholder="https://...">
+      </div>
+      <div class="form-row">
+        <div class="form-label">発注数</div>
+        <input class="form-input" id="f-order" type="number" min="0" placeholder="0">
+      </div>
+    </div>
+
+    <!-- 新規追加のときだけ表示 -->
+    <div class="form-row" id="f-stock-row">
+      <div class="form-label">初期在庫数</div>
+      <input class="form-input" id="f-stock" type="number" min="0" placeholder="0">
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="modal-submit" id="modal-submit-btn" onclick="submitModal()">追加する</button>
+    </div>
+
+    <!-- 編集モードのときだけ表示 -->
+    <div id="delete-section" style="display:none">
+      <hr class="modal-divider">
+      <button class="modal-delete" onclick="deleteItem()">この品目を削除する</button>
+    </div>
+  </div>
+</div>
+
+<div class="save-bar" id="save-bar">
+  <button class="save-btn save-btn-store" id="save-btn" onclick="saveStore()">在庫を保存する</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORES = ['神楽坂', '男マエ食道'];
+
+const DEFAULT_ITEMS = [
+  {name:'天然水 SPARKLING',                   unit:'ケース', min:3,  stores:['神楽坂','男マエ食道']},
+  {name:'コーラ（PET）',                       unit:'本',    min:20, stores:['男マエ食道']},
+  {name:'ジンジャーエール（PET）',             unit:'本',    min:20, stores:['男マエ食道']},
+  {name:'双生8寸(21cm)100/袋',               unit:'袋',    min:4,  stores:['神楽坂','男マエ食道']},
+  {name:'おしぼり[FT]タイムリー125/袋',       unit:'袋',    min:2,  stores:['神楽坂','男マエ食道']},
+  {name:'理研 キャノーラサラダ油 16.5kg',     unit:'缶',    min:1,  stores:['神楽坂','男マエ食道']},
+  {name:'ティッシュペーパー200組×5個',        unit:'箱',    min:10, stores:['神楽坂','男マエ食道']},
+  {name:'ニトリルバリューS',                  unit:'箱',    min:0,  stores:['神楽坂']},
+  {name:'ニトリルバリューM',                  unit:'箱',    min:1,  stores:['神楽坂','男マエ食道']},
+  {name:'ニトリルバリューL',                  unit:'箱',    min:1,  stores:['神楽坂','男マエ食道']},
+  {name:'エルヴェール ペーパータオル',         unit:'袋',    min:4,  stores:['神楽坂','男マエ食道']},
+  {name:'ポリエチレン キッチンラップ30cm×100m', unit:'本',  min:3,  stores:['神楽坂','男マエ食道']},
+  {name:'マイソフトコンク１kg',               unit:'袋',    min:1,  stores:['神楽坂','男マエ食道']},
+  {name:'ハンドスキッシュEX 4.5L 2本',       unit:'本',    min:1,  stores:['神楽坂','男マエ食道']},
+  {name:'トイレットペーパー絹織(シングル２倍)', unit:'個',   min:5,  stores:['神楽坂','男マエ食道']},
+  {name:'福助 ニューポリ袋 08 No.12',        unit:'袋',    min:1,  stores:['神楽坂']},
+  {name:'福助 ニューポリ袋 08 No.7',         unit:'袋',    min:1,  stores:['神楽坂']},
+];
+
+const DEFAULT_STORE = {
+  '天然水 SPARKLING':                    {'神楽坂':4,  '男マエ食道':0},
+  'コーラ（PET）':                        {'神楽坂':null,'男マエ食道':20},
+  'ジンジャーエール（PET）':              {'神楽坂':null,'男マエ食道':18},
+  '双生8寸(21cm)100/袋':                {'神楽坂':6,  '男マエ食道':6},
+  'おしぼり[FT]タイムリー125/袋':        {'神楽坂':2,  '男マエ食道':2},
+  '理研 キャノーラサラダ油 16.5kg':      {'神楽坂':2,  '男マエ食道':2},
+  'ティッシュペーパー200組×5個':         {'神楽坂':15, '男マエ食道':15},
+  'ニトリルバリューS':                   {'神楽坂':1,  '男マエ食道':null},
+  'ニトリルバリューM':                   {'神楽坂':2,  '男マエ食道':2},
+  'ニトリルバリューL':                   {'神楽坂':2,  '男マエ食道':2},
+  'エルヴェール ペーパータオル':          {'神楽坂':6,  '男マエ食道':6},
+  'ポリエチレン キッチンラップ30cm×100m':{'神楽坂':4,  '男マエ食道':4},
+  'マイソフトコンク１kg':                {'神楽坂':2,  '男マエ食道':2},
+  'ハンドスキッシュEX 4.5L 2本':        {'神楽坂':2,  '男マエ食道':2},
+  'トイレットペーパー絹織(シングル２倍)': {'神楽坂':28, '男マエ食道':28},
+  '福助 ニューポリ袋 08 No.12':         {'神楽坂':2,  '男マエ食道':null},
+  '福助 ニューポリ袋 08 No.7':          {'神楽坂':2,  '男マエ食道':null},
+};
+
+const DEFAULT_APT = [
+  {name:'天然水 SPARKLING',                    unit:'ケース', stock:2,  min:2, orderQty:4,    supplier:'アマゾン'},
+  {name:'コーラ（PET）',                        unit:'ケース', stock:2,  min:1, orderQty:1,    supplier:'アマゾン'},
+  {name:'ジンジャーエール（PET）',              unit:'ケース', stock:2,  min:0, orderQty:1,    supplier:'アマゾン'},
+  {name:'双生8寸(21cm)100/袋',               unit:'袋',     stock:19, min:2, orderQty:30,   supplier:'みやこオンライン'},
+  {name:'おしぼり[FT]タイムリー125/袋',        unit:'袋',     stock:6,  min:2, orderQty:8,    supplier:'王子タイムリー'},
+  {name:'理研 キャノーラサラダ油 16.5kg',      unit:'缶',     stock:1,  min:0, orderQty:2,    supplier:'ハピネス'},
+  {name:'ティッシュペーパー200組×5個',         unit:'箱',     stock:0,  min:0, orderQty:1,    supplier:'コスモス'},
+  {name:'ニトリルバリューS',                   unit:'箱',     stock:1,  min:0, orderQty:1,    supplier:'ハピネス'},
+  {name:'ニトリルバリューM',                   unit:'箱',     stock:0,  min:0, orderQty:1,    supplier:'ハピネス'},
+  {name:'ニトリルバリューL',                   unit:'箱',     stock:1,  min:0, orderQty:1,    supplier:'ハピネス'},
+  {name:'エルヴェール ペーパータオル',          unit:'袋',     stock:40, min:4, orderQty:42,   supplier:'容器スタイル'},
+  {name:'ポリエチレン キッチンラップ30cm×100m', unit:'本',    stock:26, min:4, orderQty:30,   supplier:'容器スタイル'},
+  {name:'マイソフトコンク１kg',                unit:'袋',     stock:0,  min:1, orderQty:2,    supplier:'ハピネス'},
+  {name:'ハンドスキッシュEX 4.5L 2本',        unit:'本',     stock:0,  min:0, orderQty:null, supplier:'ココデカウ'},
+  {name:'トイレットペーパー絹織(シングル２倍)', unit:'個',     stock:12, min:0, orderQty:12,   supplier:'コスモス'},
+];
+
+// ---- データロード ----
+function load(key, def) {
+  try { const s = localStorage.getItem(key); if (s) return JSON.parse(s); } catch(e) {}
+  return JSON.parse(JSON.stringify(def));
+}
+function persist(key, data, tsKey) {
+  try { localStorage.setItem(key, JSON.stringify(data)); if (tsKey) localStorage.setItem(tsKey, Date.now().toString()); } catch(e) {}
+}
+
+// ITEMSはlocalStorageから復元（追加・編集済みを反映）
+let ITEMS = load('inv_items', DEFAULT_ITEMS);
+let storeStock = load('inv_store', DEFAULT_STORE);
+let aptStock   = load('inv_apt',   DEFAULT_APT);
+
+// ---- ヘッダー ----
+document.getElementById('header-date').textContent =
+  new Date().toLocaleDateString('ja-JP', {year:'numeric', month:'long', day:'numeric', weekday:'short'});
+
+function setLastSaved(suffix, tsKey) {
+  const ts = localStorage.getItem(tsKey);
+  const el = document.getElementById('last-updated-' + suffix);
+  if (ts && el) {
+    const d = new Date(parseInt(ts));
+    el.textContent = '最終保存: ' + d.toLocaleString('ja-JP', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  }
+}
+setLastSaved('store', 'inv_store_ts');
+setLastSaved('apt',   'inv_apt_ts');
+
+// ---- タブ切替 ----
+function showTab(tab) {
+  ['store','refill','apt','order'].forEach(t => {
+    document.getElementById('view-'+t).style.display = t===tab ? 'block' : 'none';
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  });
+  const bar = document.getElementById('save-bar');
+  const btn = document.getElementById('save-btn');
+  if (tab === 'refill') {
+    bar.style.display = 'none';
+    renderRefill();
+  } else if (tab === 'order') {
+    bar.style.display = 'none';
+    renderOrder();
+  } else if (tab === 'apt') {
+    bar.style.display = 'block';
+    btn.className = 'save-btn save-btn-apt';
+    btn.textContent = 'アパート在庫を保存する';
+    btn.onclick = saveApt;
+    renderApt();
+  } else {
+    bar.style.display = 'block';
+    btn.className = 'save-btn save-btn-store';
+    btn.textContent = '在庫を保存する';
+    btn.onclick = saveStore;
+  }
+}
+
+// ---- ID helper ----
+function eid(name, suf) { return (name+'__'+suf).replace(/[^\w]/g,'_'); }
+
+// ---- 合計 ----
+function getTotal(item) {
+  return item.stores.reduce((s, st) => s + (storeStock[item.name]?.[st] ?? 0), 0);
+}
+
+// ---- 店舗在庫レンダリング ----
+function renderStore() {
+  const c = document.getElementById('store-items');
+  c.innerHTML = ITEMS.map(item => {
+    const total = getTotal(item);
+    const bad   = total <= item.min;
+    const cid   = eid(item.name, 'card');
+
+    const storeRowsHtml = STORES.map(store => {
+      const inItem = item.stores.includes(store);
+      const cls    = store === '神楽坂' ? 'kagurazaka' : 'otoko';
+      if (!inItem) {
+        return `<div class="store-row">
+          <span class="store-name-label ${cls}">${store}</span>
+          <span class="na-label">対象外</span>
+        </div>`;
+      }
+      const v   = storeStock[item.name]?.[store] ?? 0;
+      const vid = eid(item.name, store);
+      return `<div class="store-row">
+        <span class="store-name-label ${cls}">${store}</span>
+        <div class="qty-wrap">
+          <button class="qty-btn" ontouchstart="" onclick="chStore('${item.name}','${store}',-1)">−</button>
+          <span class="qty-val" id="${vid}">${v}</span>
+          <span class="qty-unit">${item.unit}</span>
+          <button class="qty-btn" ontouchstart="" onclick="chStore('${item.name}','${store}',1)">＋</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    const totalHtml = item.stores.length > 1
+      ? `<span class="total-label">合計 <span id="TOT_${eid(item.name,'')}">${total}</span> ${item.unit}</span>`
+      : '';
+
+    return `<div class="item-card${bad?' needs-refill':''}" id="${cid}">
+      <div class="card-header">
+        <div class="item-name">${item.name}</div>
+        <button class="edit-btn" ontouchstart="" onclick="openModal({mode:'store',editName:'${item.name.replace(/'/g,"\\'")}'})" >✎ 編集</button>
+      </div>
+      <div class="status-bar">
+        <span class="badge ${bad?'badge-danger':'badge-success'}" id="BAD_${eid(item.name,'')}">${bad?'⚠ 補充必要':'✓ OK'}</span>
+        ${totalHtml}
+      </div>
+      <div class="store-rows">${storeRowsHtml}</div>
+      <div class="min-note">最低在庫: <span>${item.min} ${item.unit}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function chStore(name, store, d) {
+  if (!storeStock[name]) storeStock[name] = {};
+  const v = Math.max(0, (storeStock[name][store] ?? 0) + d);
+  storeStock[name][store] = v;
+  const item  = ITEMS.find(i => i.name === name);
+  const total = getTotal(item);
+  const bad   = total <= item.min;
+  const vel   = document.getElementById(eid(name, store));      if (vel)  vel.textContent = v;
+  const tel   = document.getElementById('TOT_' + eid(name,'')); if (tel)  tel.textContent = total;
+  const bel   = document.getElementById('BAD_' + eid(name,'')); if (bel)  { bel.textContent = bad?'⚠ 補充必要':'✓ OK'; bel.className='badge '+(bad?'badge-danger':'badge-success'); }
+  const cel   = document.getElementById(eid(name,'card'));       if (cel)  cel.className = 'item-card'+(bad?' needs-refill':'');
+  persist('inv_store', storeStock, 'inv_store_ts');
+}
+
+function saveStore() {
+  persist('inv_store', storeStock, 'inv_store_ts');
+  setLastSaved('store', 'inv_store_ts');
+  toast('✓ 店舗在庫を保存しました');
+}
+
+// ---- 補充リスト ----
+function renderRefill() {
+  const c    = document.getElementById('refill-items');
+  const list = ITEMS.filter(item => getTotal(item) <= item.min);
+  if (!list.length) { c.innerHTML = '<div class="empty"><div class="empty-icon">✅</div>補充が必要な商品はありません</div>'; return; }
+  c.innerHTML = list.map(item => {
+    const total  = getTotal(item);
+    const detail = item.stores.map(s => `${s}: ${storeStock[item.name]?.[s]??0}${item.unit}`).join(' ／ ');
+    return `<div class="refill-card">
+      <div style="flex:1">
+        <div class="refill-name">${item.name}</div>
+        <div class="refill-sub">${detail}</div>
+        <div class="refill-sub" style="margin-top:2px">最低在庫: ${item.min} ${item.unit}</div>
+      </div>
+      <div class="refill-right">
+        <div class="refill-count">${total} ${item.unit}</div>
+        <div class="refill-count-unit">合計在庫</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ---- 発注リスト ----
+function makeOrderCard(item, stock, unit) {
+  const shopBtn = item.supplierUrl
+    ? `<a href="${item.supplierUrl}" class="shop-btn" target="_blank">🛍 ショップを開く</a>`
+    : `<span class="shop-btn-disabled">URLが未設定</span>`;
+  return `<div class="order-card">
+    <div class="order-card-top">
+      <div class="order-info">
+        <div class="order-name">${item.name}</div>
+        <div class="order-supplier">発注先: ${item.supplier || '—'}</div>
+      </div>
+      <span class="badge badge-danger">⚠ 発注必要</span>
+    </div>
+    <div class="order-detail-row">
+      <div class="order-detail-item">
+        <div class="order-detail-label">現在の在庫</div>
+        <div class="order-detail-val red">${stock} <span class="order-detail-unit">${unit}</span></div>
+      </div>
+      <div class="order-detail-item">
+        <div class="order-detail-label">最低在庫</div>
+        <div class="order-detail-val">${item.min} <span class="order-detail-unit">${unit}</span></div>
+      </div>
+      <div class="order-detail-item">
+        <div class="order-detail-label">発注数</div>
+        <div class="order-detail-val blue">${item.orderQty != null ? item.orderQty + ' ' + unit : '—'}</div>
+      </div>
+    </div>
+    <div class="order-shop-row">${shopBtn}</div>
+  </div>`;
+}
+
+function renderOrder() {
+  const c = document.getElementById('order-items');
+
+  // 店舗：合計が最低在庫以下 かつ アパートに同名商品が登録されていない品目
+  const aptNames  = new Set(aptStock.map(a => a.name));
+  const storeList = ITEMS.filter(item => getTotal(item) <= item.min && !aptNames.has(item.name));
+  // アパート：在庫が最低在庫以下
+  const aptList   = aptStock.filter(item => item.stock <= item.min);
+
+  if (!storeList.length && !aptList.length) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">✅</div>発注が必要な商品はありません</div>';
+    return;
+  }
+
+  let html = '';
+
+  if (storeList.length) {
+    html += `<div class="order-section-label">🏪 店舗</div>`;
+    html += storeList.map(item => makeOrderCard(item, getTotal(item), item.unit)).join('');
+  }
+
+  if (aptList.length) {
+    html += `<div class="order-section-label">🏠 アパート</div>`;
+    html += aptList.map(item => makeOrderCard(item, item.stock, item.unit)).join('');
+  }
+
+  c.innerHTML = html;
+}
+
+// ---- アパート在庫 ----
+function renderApt() {
+  const c = document.getElementById('apt-items');
+  c.innerHTML = aptStock.map((item, i) => {
+    const bad = item.stock <= item.min;
+    return `<div class="apt-card${bad?' needs-order':''}" id="AC_${i}">
+      <div class="apt-header">
+        <div class="apt-header-left">
+          <div class="apt-name">${item.name}</div>
+          <div class="apt-supplier">仕入先: ${item.supplierUrl ? `<a href="${item.supplierUrl}" style="color:#1a6abf;text-decoration:none;" target="_blank">${item.supplier}</a>` : (item.supplier || '—')}</div>
+        </div>
+        <div class="apt-header-right">
+          <span class="badge ${bad?'badge-danger':'badge-success'}" id="AB_${i}">${bad?'⚠ 発注必要':'✓ OK'}</span>
+          <button class="edit-btn" ontouchstart="" onclick="openModal({mode:'apt',editIdx:${i}})">✎ 編集</button>
+        </div>
+      </div>
+      <div class="apt-stock-row">
+        <div class="apt-stock-info">
+          <div style="font-size:12px;color:#999">現在の在庫</div>
+          <div class="apt-min-label">最低在庫: <strong>${item.min} ${item.unit}</strong></div>
+          ${item.orderQty!=null?`<div class="apt-order-label">発注数: <span>${item.orderQty} ${item.unit}</span></div>`:''}
+        </div>
+        <div class="qty-wrap">
+          <button class="qty-btn" ontouchstart="" onclick="chApt(${i},-1)">−</button>
+          <span class="qty-val" id="AV_${i}">${item.stock}</span>
+          <span class="qty-unit">${item.unit}</span>
+          <button class="qty-btn" ontouchstart="" onclick="chApt(${i},1)">＋</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function chApt(i, d) {
+  aptStock[i].stock = Math.max(0, aptStock[i].stock + d);
+  const v = aptStock[i].stock; const bad = v <= aptStock[i].min;
+  const el   = document.getElementById('AV_'+i); if (el)   el.textContent = v;
+  const card = document.getElementById('AC_'+i); if (card) card.className = 'apt-card'+(bad?' needs-order':'');
+  const bdg  = document.getElementById('AB_'+i); if (bdg)  { bdg.textContent = bad?'⚠ 発注必要':'✓ OK'; bdg.className='badge '+(bad?'badge-danger':'badge-success'); }
+  persist('inv_apt', aptStock, 'inv_apt_ts');
+}
+
+function saveApt() {
+  persist('inv_apt', aptStock, 'inv_apt_ts');
+  setLastSaved('apt', 'inv_apt_ts');
+  toast('✓ アパート在庫を保存しました');
+}
+
+// ============================
+// モーダル（追加・編集 兼用）
+// ============================
+let modalState = {}; // {mode, editName?, editIdx?}
+let selectedStores = ['神楽坂', '男マエ食道'];
+
+function openModal(opts) {
+  // opts: {mode:'store'|'apt', editName?:string, editIdx?:number}
+  modalState = opts;
+  const isEdit = opts.editName != null || opts.editIdx != null;
+
+  // フォームリセット
+  ['f-name','f-unit','f-min','f-stock','f-supplier','f-url','f-order','f-store-supplier','f-store-url','f-store-order'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  selectedStores = ['神楽坂', '男マエ食道'];
+  document.getElementById('chk-神楽坂').className    = 'store-check checked';
+  document.getElementById('chk-男マエ食道').className = 'store-check checked';
+
+  // モード別UI切替
+  document.getElementById('f-stores-row').style.display       = opts.mode === 'store' ? 'block' : 'none';
+  document.getElementById('f-store-order-fields').style.display = opts.mode === 'store' ? 'block' : 'none';
+  document.getElementById('f-apt-fields').style.display         = opts.mode === 'apt'   ? 'block' : 'none';
+  document.getElementById('f-stock-row').style.display   = isEdit ? 'none' : 'block';
+  document.getElementById('delete-section').style.display = isEdit ? 'block' : 'none';
+  document.getElementById('modal-submit-btn').textContent = isEdit ? '変更を保存する' : '追加する';
+
+  if (isEdit && opts.mode === 'store') {
+    const item = ITEMS.find(i => i.name === opts.editName);
+    if (!item) return;
+    document.getElementById('modal-title').textContent = '品目を編集';
+    document.getElementById('f-name').value = item.name;
+    document.getElementById('f-unit').value = item.unit;
+    document.getElementById('f-min').value  = item.min;
+    document.getElementById('f-store-supplier').value = item.supplier || '';
+    document.getElementById('f-store-url').value      = item.supplierUrl || '';
+    document.getElementById('f-store-order').value    = item.orderQty != null ? item.orderQty : '';
+    // 対象店舗
+    selectedStores = [...item.stores];
+    STORES.forEach(s => {
+      document.getElementById('chk-'+s).className = 'store-check' + (selectedStores.includes(s) ? ' checked' : '');
+    });
+  } else if (isEdit && opts.mode === 'apt') {
+    const item = aptStock[opts.editIdx];
+    if (!item) return;
+    document.getElementById('modal-title').textContent = '品目を編集';
+    document.getElementById('f-name').value     = item.name;
+    document.getElementById('f-unit').value     = item.unit;
+    document.getElementById('f-min').value      = item.min;
+    document.getElementById('f-supplier').value = item.supplier || '';
+    document.getElementById('f-url').value      = item.supplierUrl || '';
+    document.getElementById('f-order').value    = item.orderQty != null ? item.orderQty : '';
+  } else {
+    document.getElementById('modal-title').textContent = opts.mode === 'store' ? '店舗 新規品目を追加' : 'アパート 新規品目を追加';
+  }
+
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+function closeModalOutside(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
+
+function toggleStore(store) {
+  const idx = selectedStores.indexOf(store);
+  if (idx >= 0) {
+    if (selectedStores.length === 1) return;
+    selectedStores.splice(idx, 1);
+    document.getElementById('chk-'+store).className = 'store-check';
+  } else {
+    selectedStores.push(store);
+    document.getElementById('chk-'+store).className = 'store-check checked';
+  }
+}
+
+function submitModal() {
+  const name    = document.getElementById('f-name').value.trim();
+  const unit    = document.getElementById('f-unit').value.trim();
+  const minVal  = parseInt(document.getElementById('f-min').value) || 0;
+  const stock   = parseInt(document.getElementById('f-stock').value) || 0;
+  if (!name) { alert('商品名を入力してください'); return; }
+  if (!unit) { alert('単位を入力してください');   return; }
+
+  const { mode, editName, editIdx } = modalState;
+  const isEdit = editName != null || editIdx != null;
+
+  if (mode === 'store') {
+    const storeSupplier = document.getElementById('f-store-supplier').value.trim();
+    const storeUrl      = document.getElementById('f-store-url').value.trim();
+    const storeOrderQty = document.getElementById('f-store-order').value !== '' ? parseInt(document.getElementById('f-store-order').value) : null;
+    if (isEdit) {
+      // 編集: ITEMSを更新
+      const item = ITEMS.find(i => i.name === editName);
+      if (!item) return;
+      const oldName = item.name;
+      item.name        = name;
+      item.unit        = unit;
+      item.min         = minVal;
+      item.stores      = [...selectedStores];
+      item.supplier    = storeSupplier || '';
+      item.supplierUrl = storeUrl || '';
+      item.orderQty    = storeOrderQty;
+      // storeStockのキー名変更
+      if (oldName !== name) {
+        storeStock[name] = storeStock[oldName] || {};
+        delete storeStock[oldName];
+      }
+      // 対象外になった店舗はnullに
+      STORES.forEach(s => {
+        if (!selectedStores.includes(s)) storeStock[name][s] = null;
+        else if (storeStock[name][s] === null) storeStock[name][s] = 0;
+      });
+      persist('inv_items', ITEMS, null);
+      persist('inv_store', storeStock, 'inv_store_ts');
+      closeModal();
+      renderStore();
+      toast('✓ 「'+name+'」を更新しました');
+    } else {
+      // 新規追加
+      if (ITEMS.find(i => i.name === name)) { alert('同じ名前の商品が既に存在します'); return; }
+      ITEMS.push({name, unit, min: minVal, stores: [...selectedStores], supplier: storeSupplier, supplierUrl: storeUrl, orderQty: storeOrderQty});
+      if (!storeStock[name]) storeStock[name] = {};
+      STORES.forEach(s => { storeStock[name][s] = selectedStores.includes(s) ? stock : null; });
+      persist('inv_items', ITEMS, null);
+      persist('inv_store', storeStock, 'inv_store_ts');
+      closeModal();
+      renderStore();
+      toast('✓ 「'+name+'」を追加しました');
+    }
+  } else {
+    // アパートタブ
+    const supplier = document.getElementById('f-supplier').value.trim();
+    const orderQty = document.getElementById('f-order').value !== '' ? parseInt(document.getElementById('f-order').value) : null;
+    const supplierUrl = document.getElementById('f-url').value.trim();
+    if (isEdit) {
+      const item = aptStock[editIdx];
+      item.name        = name;
+      item.unit        = unit;
+      item.min         = minVal;
+      item.supplier    = supplier || '—';
+      item.supplierUrl = supplierUrl || '';
+      item.orderQty    = orderQty;
+      persist('inv_apt', aptStock, 'inv_apt_ts');
+      closeModal();
+      renderApt();
+      toast('✓ 「'+name+'」を更新しました');
+    } else {
+      if (aptStock.find(i => i.name === name)) { alert('同じ名前の商品が既に存在します'); return; }
+      aptStock.push({name, unit, stock, min: minVal, orderQty, supplier: supplier || '—', supplierUrl: supplierUrl || ''});
+      persist('inv_apt', aptStock, 'inv_apt_ts');
+      closeModal();
+      renderApt();
+      toast('✓ 「'+name+'」を追加しました');
+    }
+  }
+}
+
+function deleteItem() {
+  const { mode, editName, editIdx } = modalState;
+  if (mode === 'store') {
+    if (!confirm('「'+editName+'」を削除しますか？')) return;
+    const idx = ITEMS.findIndex(i => i.name === editName);
+    if (idx >= 0) ITEMS.splice(idx, 1);
+    delete storeStock[editName];
+    persist('inv_items', ITEMS, null);
+    persist('inv_store', storeStock, 'inv_store_ts');
+    closeModal();
+    renderStore();
+    toast('🗑 「'+editName+'」を削除しました');
+  } else {
+    const name = aptStock[editIdx]?.name;
+    if (!confirm('「'+name+'」を削除しますか？')) return;
+    aptStock.splice(editIdx, 1);
+    persist('inv_apt', aptStock, 'inv_apt_ts');
+    closeModal();
+    renderApt();
+    toast('🗑 「'+name+'」を削除しました');
+  }
+}
+
+// ---- トースト ----
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+renderStore();
+</script>
+</body>
+</html>
